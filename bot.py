@@ -1,18 +1,17 @@
 import discord
 from discord.ext import commands
-from discord.ui import Button, View, Select, Modal, TextInput
-import json
+from discord.ui import Button, View, Select
 import os
 from datetime import datetime
 
-# Настройки бота
-TOKEN = os.getenv('DISCORD_TOKEN')  # Обязательно добавьте в переменные окружения Kerit
+TOKEN = os.getenv('DISCORD_TOKEN')
 
-# ID каналов и ролей (замените на свои)
-GUILD_ID =1531643603741442129   # ID вашего сервера
-CATEGORY_ID = 1531709462635741297  # ID категории, где будут создаваться тикеты
-SUPPORT_ROLE_ID = 1538332828645855287  # ID роли поддержки
-LOG_CHANNEL_ID = 1538333206678343691  # ID канала для логов
+# ==================== НАСТРОЙКИ (ЗАМЕНИ НА СВОИ) ====================
+GUILD_ID = 1531643603741442129          # ID твоего сервера
+CATEGORY_ID = 1531709462635741297       # ID категории для тикетов
+SUPPORT_ROLE_ID = 1538332828645855287   # ID роли поддержки
+LOG_CHANNEL_ID = 1538333206678343691    # ID канала для логов
+# ===================================================================
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -20,7 +19,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# ---------- КНОПКИ ДЛЯ СОЗДАНИЯ ТИКЕТА ----------
+# ==================== ВЫБОР ТИПА ТИКЕТА ====================
 class TicketSelect(Select):
     def __init__(self):
         options = [
@@ -53,13 +52,13 @@ class TicketSelect(Select):
             placeholder="Выберите тип тикета...",
             min_values=1,
             max_values=1,
-            options=options,
-            custom_id="ticket_select"
+            options=options
         )
 
     async def callback(self, interaction: discord.Interaction):
-        # Проверяем, есть ли уже открытый тикет у пользователя
         guild = interaction.guild
+
+        # Проверяем, есть ли уже открытый тикет
         for channel in guild.channels:
             if channel.name == f"ticket-{interaction.user.name}":
                 await interaction.response.send_message(
@@ -71,16 +70,14 @@ class TicketSelect(Select):
         # Создаём категорию, если её нет
         category = discord.utils.get(guild.categories, id=CATEGORY_ID)
         if not category:
-            category = await guild.create_category("🎫 Тикеты")
+            category = await guild.create_category("🎫 Тикеты ArbuZ")
 
-        # Создаём текстовый канал
+        # Создаём канал
         channel_name = f"ticket-{interaction.user.name}"
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.get_role(SUPPORT_ROLE_ID): discord.PermissionOverwrite(
-                read_messages=True, send_messages=True
-            )
+            guild.get_role(SUPPORT_ROLE_ID): discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
         channel = await guild.create_text_channel(
@@ -90,26 +87,37 @@ class TicketSelect(Select):
             reason=f"Тикет от {interaction.user.name}"
         )
 
-        # Определяем цвет эмбеда в зависимости от выбора
-        colors = {
-            "tech": 0xFF4444,   # Красный
-            "finance": 0x44FF44, # Зелёный
-            "partner": 0x4444FF, # Синий
-            "other": 0xFFFF44   # Жёлтый
+        # Определяем тип тикета
+        ticket_types = {
+            "tech": "💻 Техническая поддержка",
+            "finance": "💰 Финансовые вопросы",
+            "partner": "🤝 Сотрудничество",
+            "other": "❓ Другое"
         }
-        color = colors.get(self.values[0], 0xFFFFFF)
+        ticket_type = ticket_types.get(self.values[0], "❓ Другое")
 
-        # Отправляем приветственное сообщение в тикет
+        # Цвета для разных типов
+        colors = {
+            "tech": 0xFF4444,
+            "finance": 0x44FF44,
+            "partner": 0x4444FF,
+            "other": 0xFFFF44
+        }
+        color = colors.get(self.values[0], 0x5865F2)
+
+        # Приветственное сообщение в тикете
         embed = discord.Embed(
             title="🎫 Новый тикет",
-            description=f"**Тип:** {self.options[0].label if self.values[0] == 'tech' else self.options[1].label if self.values[0] == 'finance' else self.options[2].label if self.values[0] == 'partner' else self.options[3].label}",
+            description=f"**Тип:** {ticket_type}",
             color=color,
             timestamp=datetime.now()
         )
         embed.add_field(name="👤 Создал", value=interaction.user.mention, inline=True)
         embed.add_field(name="📅 Дата", value=datetime.now().strftime("%d.%m.%Y %H:%M"), inline=True)
-        embed.set_footer(text="Soul Support System", icon_url=interaction.guild.icon.url if interaction.guild.icon else None)
+        embed.add_field(name="📌 Статус", value="🟡 Ожидает ответа", inline=True)
+        embed.set_footer(text="ArbuZ Support System", icon_url=interaction.guild.icon.url if interaction.guild.icon else None)
 
+        # Кнопки
         close_button = Button(
             label="❌ Закрыть тикет",
             style=discord.ButtonStyle.danger,
@@ -136,10 +144,11 @@ class TicketSelect(Select):
         if log_channel:
             log_embed = discord.Embed(
                 title="📩 Новый тикет",
-                description=f"**Канал:** {channel.mention}\n**Создал:** {interaction.user.mention}\n**Тип:** {self.options[0].label if self.values[0] == 'tech' else self.options[1].label if self.values[0] == 'finance' else self.options[2].label if self.values[0] == 'partner' else self.options[3].label}",
+                description=f"**Канал:** {channel.mention}\n**Создал:** {interaction.user.mention}\n**Тип:** {ticket_type}",
                 color=0x00FF00,
                 timestamp=datetime.now()
             )
+            log_embed.set_footer(text="ArbuZ Support System")
             await log_channel.send(embed=log_embed)
 
         await interaction.response.send_message(
@@ -147,7 +156,8 @@ class TicketSelect(Select):
             ephemeral=True
         )
 
-# ---------- ПАНЕЛЬ СОЗДАНИЯ ТИКЕТОВ ----------
+
+# ==================== ПАНЕЛЬ СОЗДАНИЯ ТИКЕТОВ ====================
 class TicketPanelView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -168,7 +178,8 @@ class TicketPanelView(View):
             ephemeral=True
         )
 
-# ---------- ОБРАБОТЧИКИ КНОПОК В ТИКЕТЕ ----------
+
+# ==================== ОБРАБОТЧИКИ КНОПОК ====================
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
     if interaction.type == discord.InteractionType.component:
@@ -177,10 +188,10 @@ async def on_interaction(interaction: discord.Interaction):
         # Закрытие тикета
         if custom_id == "close_ticket":
             await interaction.response.send_message(
-                "🔄 Тикет будет закрыт через 5 секунд...",
+                "🔒 Тикет будет закрыт через 5 секунд...",
                 ephemeral=False
             )
-            await interaction.channel.send("🔒 Тикет закрывается...")
+            await interaction.channel.send("🔒 Тикет закрывается. Спасибо за обращение!")
 
             # Логируем закрытие
             log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
@@ -191,6 +202,7 @@ async def on_interaction(interaction: discord.Interaction):
                     color=0xFF0000,
                     timestamp=datetime.now()
                 )
+                log_embed.set_footer(text="ArbuZ Support System")
                 await log_channel.send(embed=log_embed)
 
             import asyncio
@@ -206,7 +218,7 @@ async def on_interaction(interaction: discord.Interaction):
                     ephemeral=False
                 )
 
-                # Обновляем название канала
+                # Меняем название канала
                 try:
                     await interaction.channel.edit(
                         name=f"📌 {interaction.channel.name}"
@@ -222,7 +234,18 @@ async def on_interaction(interaction: discord.Interaction):
                             item.disabled = True
                             await interaction.message.edit(view=view)
 
-                # Логируем
+                # Обновляем статус в эмбеде
+                if interaction.message.embeds:
+                    embed = interaction.message.embeds[0]
+                    embed_dict = embed.to_dict()
+                    for i, field in enumerate(embed_dict.get('fields', [])):
+                        if field.get('name') == "📌 Статус":
+                            embed_dict['fields'][i]['value'] = "🟢 В работе (взял " + interaction.user.mention + ")"
+                            break
+                    new_embed = discord.Embed.from_dict(embed_dict)
+                    await interaction.message.edit(embed=new_embed)
+
+                # Логируем взятие
                 log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
                 if log_channel:
                     log_embed = discord.Embed(
@@ -231,6 +254,7 @@ async def on_interaction(interaction: discord.Interaction):
                         color=0x00FF00,
                         timestamp=datetime.now()
                     )
+                    log_embed.set_footer(text="ArbuZ Support System")
                     await log_channel.send(embed=log_embed)
             else:
                 await interaction.response.send_message(
@@ -238,13 +262,14 @@ async def on_interaction(interaction: discord.Interaction):
                     ephemeral=True
                 )
 
-# ---------- КОМАНДА ДЛЯ СОЗДАНИЯ ПАНЕЛИ ----------
+
+# ==================== КОМАНДА ДЛЯ СОЗДАНИЯ ПАНЕЛИ ====================
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def ticket_panel(ctx):
     """Создаёт панель для создания тикетов"""
     embed = discord.Embed(
-        title="🎫 **Soul Support System**",
+        title="🎫 **ArbuZ Support System**",
         description=(
             "❗ Нажмите на кнопку ниже, чтобы создать тикет.\n\n"
             "• Администрация обрабатывает тикеты в порядке очереди.\n"
@@ -254,16 +279,29 @@ async def ticket_panel(ctx):
         color=0x5865F2,
         timestamp=datetime.now()
     )
-    embed.set_footer(text="Soul Support System", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+    embed.set_footer(
+        text="ArbuZ Support System",
+        icon_url=ctx.guild.icon.url if ctx.guild.icon else None
+    )
 
     view = TicketPanelView()
     await ctx.send(embed=embed, view=view)
 
+
+# ==================== СТАТУС БОТА ====================
 @bot.event
 async def on_ready():
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Activity(
+            type=discord.ActivityType.watching,
+            text="ArbuZ | !ticket_panel"
+        )
+    )
     print(f"✅ Бот {bot.user} запущен и готов к работе!")
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="тикеты"))
+    print(f"ArbuZ Support System активен!")
 
-# Запуск
+
+# ==================== ЗАПУСК ====================
 if __name__ == "__main__":
     bot.run(TOKEN)
