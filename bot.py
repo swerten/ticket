@@ -30,12 +30,6 @@ class TicketSelect(Select):
                 value="tech"
             ),
             discord.SelectOption(
-                label="💰 Финансовые вопросы",
-                description="Оплата, донаты, премиум",
-                emoji="💳",
-                value="finance"
-            ),
-            discord.SelectOption(
                 label="🤝 Сотрудничество",
                 description="Партнёрство, реклама, отзывы",
                 emoji="📢",
@@ -90,7 +84,6 @@ class TicketSelect(Select):
         # Определяем тип тикета
         ticket_types = {
             "tech": "💻 Техническая поддержка",
-            "finance": "💰 Финансовые вопросы",
             "partner": "🤝 Сотрудничество",
             "other": "❓ Другое"
         }
@@ -99,7 +92,6 @@ class TicketSelect(Select):
         # Цвета для разных типов
         colors = {
             "tech": 0xFF4444,
-            "finance": 0x44FF44,
             "partner": 0x4444FF,
             "other": 0xFFFF44
         }
@@ -268,17 +260,23 @@ async def on_interaction(interaction: discord.Interaction):
 @commands.has_permissions(administrator=True)
 async def ticket_panel(ctx):
     """Создаёт панель для создания тикетов"""
+    
+    # Арбузная картинка (можешь заменить на прямую ссылку)
+    arbuZ_image = "https://i.imgur.com/dwKcG3h.jpeg"  # ⬅️ ЗАМЕНИ НА СВОЮ ССЫЛКУ!
+    
     embed = discord.Embed(
         title="🎫 **ArbuZ Support System**",
         description=(
             "❗ Нажмите на кнопку ниже, чтобы создать тикет.\n\n"
-            "• Администрация обрабатывает тикеты в порядке очереди.\n"
-            "• Если вы не получили ответ мгновенно — не стоит паниковать.\n"
-            "• Мы тоже люди, а не роботы. Просто немного подождите."
+            "🕒 Администрация обрабатывает тикеты в порядке очереди.\n"
+            "Если вы не получили ответ мгновенно — не стоит паниковать.\n"
+            "Мы тоже люди, а не роботы. Просто немного подождите.\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         ),
         color=0x5865F2,
         timestamp=datetime.now()
     )
+    embed.set_thumbnail(url=arbuZ_image)  # 🍉 Арбуз слева!
     embed.set_footer(
         text="ArbuZ Support System",
         icon_url=ctx.guild.icon.url if ctx.guild.icon else None
@@ -295,7 +293,7 @@ async def on_ready():
         status=discord.Status.online,
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            text="ArbuZ | !ticket_panel"
+            name="ArbuZ | !ticket_panel"
         )
     )
     print(f"✅ Бот {bot.user} запущен и готов к работе!")
