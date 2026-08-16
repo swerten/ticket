@@ -302,4 +302,20 @@ async def on_ready():
 
 # ==================== ЗАПУСК ====================
 if __name__ == "__main__":
+    
     bot.run(TOKEN)
+# Добавьте этот код в конец вашего bot.py
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
+
+# Запускаем веб-сервер в отдельном потоке, чтобы он не блокировал работу бота
+threading.Thread(target=run_web).start()
